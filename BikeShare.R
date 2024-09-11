@@ -6,8 +6,17 @@ library(skimr)
 library(DataExplorer)
 library(GGally)
 
+# Read Data
+
 bike_train <- vroom("train.csv")
+bike_train$season <- as.factor(bike_train$season)
+bike_train$weather <- as.factor(bike_train$weather)
+bike_train$workingday <- as.factor(bike_train$workingday)
+bike_train$holiday <- as.factor(bike_train$holiday)
+#bike_train$datetime <- as.factor(bike_train$datetime)
 View(bike_train)
+
+# EDA
 
 glimpse(bike_train)
 skimr(bike_train)
@@ -22,24 +31,23 @@ plot_histogram(bike_train)
 
 plot_correlation(bike_train)
 
-# Issue of counts
+## Issue of counts
 plot1 <- bike_train |>
   ggplot(aes(x=weather)) +
   geom_bar()
 
-# Distribution of data by seasons
+## Distribution of data by seasons
 plot2 <- bike_train |> 
-  ggplot(aes(x = as.factor(season), y = count)) +
-  geom_boxplot() +
-  labs(x = "season")
+  ggplot(aes(x = season, y = count)) +
+  geom_boxplot()
 
-# Issue of auto-correlation
+## Issue of auto-correlation
 plot3 <- bike_train |> 
   ggplot(aes(x = temp, y = atemp)) +
   geom_point() +
   geom_smooth(method = "lm")
 
-# Distribution of Casual vs. Registered
+## Distribution of Casual vs. Registered
 plot4 <- bike_train |> 
   ggplot() +
   geom_histogram(aes(x = casual, fill = "casual"),
@@ -53,3 +61,10 @@ plot4 <- bike_train |>
   theme_minimal()
 
 (plot1 + plot2) / (plot3 + plot4)
+
+# Fit Model
+
+bike_lm <- linear_reg() |> 
+  set_engine("lm") |> 
+  set_mode("regression") |> 
+  fit(formula=log(count)~ . -casual -registered, data=bike_train)
