@@ -5,6 +5,7 @@ library(patchwork)
 library(skimr)
 library(DataExplorer)
 library(GGally)
+library(glmnet)
 
 bike_train <- vroom("train.csv")
 bike_train <- bike_train  |> 
@@ -18,23 +19,21 @@ bike_recipe <- recipe(count~., data = bike_train) |>
     season=factor(season,
                   levels = 1:4,
                   labels = c("Spring", "Summer", "Fall", "Winter")),
-    weather=as.factor(ifelse(4,3,weather)),
+    weather=as.factor(ifelse(weather==4, weather==3, weather)),
     holiday=as.factor(holiday),
-    workingday=as.factor(workingday),
-    datetime=as.POSIXct(datetime,
-                        format = "%Y-%m-%d %H:%M:%S")) |> 
-  step_date(datetime, features = c("year", "month", "dow")) |>
-  step_time(datetime, features = c("hour")) |>
-  step_zv(all_predictors()) |> 
-  step_corr(all_double_predictors(), threshold = .7) |> 
-  step_dummy(all_nominal_predictors())
+    workingday=as.factor(workingday)) |> 
+  step_date(datetime, features = "month") |>
+  step_time(datetime, features = "hour", keep_original_cols = F) |>
+  step_mutate(datetime_hour=as.factor(datetime_hour),
+              datetime_month=as.factor(datetime_month)) |>
+  step_dummy(all_nominal_predictors()) |> 
+  step_normalize(all_predictors())
 
 # prepped_recipe = prep(bike_recipe)
 # bake(prepped_recipe, new_data=bike_test)
 
-bike_lm <- linear_reg() |> 
-  set_engine("lm") |> 
-  set_mode("regression")
+bike_lm <- linear_reg(penalty=2, mixture=.2) |> 
+  set_engine("glmnet")
 
 bike_workflow <- workflow() |> 
   add_recipe(bike_recipe) |> 
@@ -54,4 +53,4 @@ kaggle_submission <- lin_preds |>
   mutate(datetime=as.character(format(datetime)),
          count=exp(count))
 
-vroom_write(x=kaggle_submission, file="./Linear_WF_Preds.csv", delim = ",")
+vroom_write(x=kaggle_submission, file="./Linear_Pen_Preds.csv", delim = ",")
