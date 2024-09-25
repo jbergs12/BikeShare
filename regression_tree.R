@@ -41,7 +41,7 @@ bike_tree_wf <- workflow() |>
   add_recipe(bike_recipe) |> 
   add_model(bike_tree)
 
-grid_of_tuning_params <- grid_regular(tree_depth(),
+grid_of_tuning_params_tree <- grid_regular(tree_depth(),
                                       cost_complexity(),
                                       min_n(),
                                       levels = 5)
