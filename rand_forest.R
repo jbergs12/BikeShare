@@ -43,21 +43,28 @@ bike_forest_wf <- workflow() |>
   add_model(bike_forest)
 
 grid_of_tuning_params_forest <- grid_regular(
-  mtry(range = c(1, ncol(bake(prep(bike_recipe), bike_train)))),
+  mtry(range = c(1, ncol(juice(prep(bike_recipe))))),
                                       min_n(),
                                       levels = 5)
 
 folds <- vfold_cv(bike_train, v=5)
 
-CV_results <- bike_forest_wf |> 
-  tune_grid(resamples=folds,
-            grid=grid_of_tuning_params_forest,
-            metrics=metric_set(rmse))
+run_cv <- function(){
+ cl <- makePSOCKcluster(8)
+ doParallel::registerDoParallel(cl)
+ cvStart <- Sys.time()
+ CV_results <- bike_forest_wf |>
+   tune_grid(resamples=folds,
+             grid=grid_of_tuning_params_forest,
+             metrics=metric_set(rmse))
+ 
+ print("CV time: ")
+ Sys.time()-cvStart
+ stopCluster(cl)
+ return(CV_results)
+}
 
-collect_metrics(CV_results) |> 
-  filter(.metric=="rmse") |> 
-  ggplot(aes(x=penalty, y = mean, color = factor(mixture))) +
-  geom_line()
+CV_results = run_cv()
 
 bestTune <- CV_results |> 
   select_best(metric="rmse")
